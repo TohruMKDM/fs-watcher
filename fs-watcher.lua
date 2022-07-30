@@ -1,6 +1,6 @@
 --[[lit-meta
 	name = 'TohruMKDM/fs-watcher'
-	version = '1.0.1'
+	version = '1.0.2'
 	homepage = 'https://github.com/TohruMKDM/fs-watcher'
 	description = 'Utility to allow callbacks to be assigned to fs operations such file creation, deletion, and modification.'
 	tags = {'utility', 'watcher', 'fs'}
@@ -41,6 +41,31 @@ local function getInfo(directory, recursive, output)
     return output
 end
 
+--- Stops monitoring the given directory
+--- @param directory string The directory you want to stop monitoring
+--- @return boolean success, string? err_msg
+local function stop(directory)
+    if type(directory) ~= 'string' then
+        error(error_format:format(1, 'stop', 'string', type(directory)), 2)
+    end
+    local watcher = watchers[directory]
+    if watcher then
+        local success, err = watcher:stop()
+        if not success then
+            return false, err
+        end
+        watchers[directory] = nil
+        return true
+    end
+    return  false, 'No active watcher for that directory'
+end
+
+local function handleCallback(directory, fn, ...)
+    if fn(...) then
+        stop(directory)
+    end
+end
+
 --- @alias watcher_callback_events
 --- Fired when a file is modified
 ---|'update'
@@ -75,7 +100,7 @@ local function watch(directory, recursive, callback)
     local watcher = assert(fs_event())
     local success, err = watcher:start(directory, {recursive = recursive}, function(err, entry, event)
         if err then
-            callback('error', err)
+            handleCallback(directory, callback, 'error', err)
             return
         end
         local entryPath = pathJoin(directory, entry)
@@ -85,17 +110,17 @@ local function watch(directory, recursive, callback)
             local old = info[entryPath]
             if size ~= 0 and (mtime.sec ~= old.mtime.sec or mtime.nsec ~= old.mtime.nsec) then
                 info[entryPath] = {size = size, mtime = mtime}
-                callback('update', entryPath)
+                handleCallback(directory, callback, 'update', entryPath)
             end
             return
         end
         local stat = fs_stat(entryPath)
         if stat then
             info[entryPath] = {size = stat.size, mtime = stat.mtime}
-            callback('create', entryPath)
+            handleCallback(directory, callback, 'create', entryPath)
         else
             info[entryPath] = nil
-            callback('delete', entryPath)
+            handleCallback(directory, callback, 'delete', entryPath)
         end
     end)
     if not success then
@@ -103,25 +128,6 @@ local function watch(directory, recursive, callback)
     end
     watchers[directory] = watcher
     return watcher
-end
-
---- Stops monitoring the given directory
---- @param directory string The directory you want to stop monitoring
---- @return boolean success, string? err_msg
-local function stop(directory)
-    if type(directory) ~= 'string' then
-        error(error_format:format(1, 'stop', 'string', type(directory)), 2)
-    end
-    local watcher = watchers[directory]
-    if watcher then
-        local success, err = watcher:stop()
-        if not success then
-            return false, err
-        end
-        watchers[directory] = nil
-        return true
-    end
-    return  false
 end
 
 return {

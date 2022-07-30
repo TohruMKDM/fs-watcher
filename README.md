@@ -8,7 +8,7 @@ lit install TohruMKDM/fs-watcher
 ```
 
 # Usage
-Using this module is extremely easy
+Using this module is extremely easy, below is a detailed example of use.
 ```lua
 -- First we require the module
 local fs_watcher = require('fs-watcher')
@@ -78,3 +78,7 @@ Fired when an error occurs
 Stops monitoring the given directory</br></br>
 
 **Returns:** boolean, string?
+
+# Note
+Every active watcher is a handle that will keep your event loop alive and as such your program will not exit until all of them are stopped or closed.
+Make sure you call `fs_watcher.stop` on all directories a watcher is monitoring after you're done with them.
