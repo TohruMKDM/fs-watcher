@@ -44,6 +44,7 @@ A detailed explanation on what each function this module provides does.
 | directory | string   |          |
 | recursive | boolean  |     ✔    |
 | callback  | function |          |
+
 Creates a new watcher to monitor the given directory for changes</br>
 The callback's parameters are defined below</br></br>
 **Returns:** [uv_fs_event_t](https://github.com/luvit/luv/blob/master/docs.md#uv_fs_event_t--fs-event-handle)
@@ -53,6 +54,7 @@ The callback's parameters are defined below</br></br>
 | --------- | -------- |
 |   event   |  string  |   
 |  filepath |  string  |
+
 `filepath` will be the filepath of the relevant file **relative** to the directory the watcher is monitoring</br>
 List of all possible events are defined below
 
@@ -72,6 +74,7 @@ Fired when an error occurs
 | Parameter |   Type   |
 | --------- | -------- |
 | directory |  string  |
+
 Stops monitoring the given directory</br></br>
 
 **Returns:** boolean, string?
