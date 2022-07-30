@@ -56,6 +56,7 @@ The callback's parameters are defined below</br></br>
 |  filepath |  string  |
 
 `filepath` will be the filepath of the relevant file **relative** to the directory the watcher is monitoring</br>
+If the callback returns a truthy value then it will automatically cancel the watcher for the directory the callback is assigned to.</br>
 List of all possible events are defined below
 
 ### create
