@@ -1,6 +1,6 @@
 --[[lit-meta
 	name = 'TohruMKDM/fs-watcher'
-	version = '1.0.0'
+	version = '1.0.1'
 	homepage = 'https://github.com/TohruMKDM/fs-watcher'
 	description = 'Utility to allow callbacks to be assigned to fs operations such file creation, deletion, and modification.'
 	tags = {'utility', 'watcher', 'fs'}
@@ -109,6 +109,9 @@ end
 --- @param directory string The directory you want to stop monitoring
 --- @return boolean success, string? err_msg
 local function stop(directory)
+    if type(directory) ~= 'string' then
+        error(error_format:format(1, 'stop', 'string', type(directory)), 2)
+    end
     local watcher = watchers[directory]
     if watcher then
         local success, err = watcher:stop()
