@@ -1,6 +1,6 @@
 --[[lit-meta
 	name = 'TohruMKDM/fs-watcher'
-	version = '1.0.2'
+	version = '1.1.0'
 	homepage = 'https://github.com/TohruMKDM/fs-watcher'
 	description = 'Utility to allow callbacks to be assigned to fs operations such file creation, deletion, and modification.'
 	tags = {'utility', 'watcher', 'fs'}
@@ -11,10 +11,12 @@
 local uv = require('uv')
 local fs = require('fs')
 local path = require('pathjoin')
+local timer = require('timer')
 
 local fs_event, fs_stat = uv.new_fs_event, uv.fs_stat
 local scandirSync = fs.scandirSync
 local pathJoin = path.pathJoin
+local setImmediate = timer.setImmediate
 
 local error_format = 'bad argument #%d to %q (%s expected, got %s)'
 
@@ -35,7 +37,7 @@ local function getInfo(directory, recursive, output)
             getInfo(entryPath, recursive, output)
         elseif entryType == 'file' then
             local stat = assert(fs_stat(entryPath))
-            output[entryPath] = {size = stat.size, mtime = stat.mtime}
+            output[entryPath] = {size = stat.size, mtime = stat.mtime, birthtime = stat.birthtime, path = entryPath}
         end
     end
     return output
@@ -60,6 +62,19 @@ local function stop(directory)
     return  false, 'No active watcher for that directory'
 end
 
+--- Stops all active watchers
+--- @return boolean success, string? err_msg
+local function stopAll()
+    for directory, watcher in pairs(watchers) do
+        local success, err = watcher:stop()
+        if not success then
+            return false, err
+        end
+        watchers[directory] = nil
+    end
+    return true
+end
+
 local function handleCallback(directory, fn, ...)
     if fn(...) then
         stop(directory)
@@ -73,13 +88,15 @@ end
 ---|'create'
 --- Fired when a file is deleted
 ---|'delete'
+--- Fired when a file is renamed
+---|'rename'
 --- Fired when an error occurs
 ---|'error'
 
 --- Creates a new watcher to monitor the given directory for changes
 --- @param directory string The directory you want to monitor
 --- @param recursive boolean Whether or not to monitor changes recursively
---- @param callback fun(event: watcher_callback_events, filepath: string)
+--- @param callback fun(event: watcher_callback_events, filepath: string, newpath?: string)
 --- @return uv_fs_event_t
 local function watch(directory, recursive, callback)
     if type(directory) ~= 'string' then
@@ -97,6 +114,7 @@ local function watch(directory, recursive, callback)
         watchers[directory] = nil
     end
     local info = getInfo(directory, recursive)
+    local lastDeleted, createCalled
     local watcher = assert(fs_event())
     local success, err = watcher:start(directory, {recursive = recursive}, function(err, entry, event)
         if err then
@@ -109,18 +127,30 @@ local function watch(directory, recursive, callback)
             local size, mtime = stat.size, stat.mtime
             local old = info[entryPath]
             if size ~= 0 and (mtime.sec ~= old.mtime.sec or mtime.nsec ~= old.mtime.nsec) then
-                info[entryPath] = {size = size, mtime = mtime}
+                info[entryPath] = {size = size, mtime = mtime, birthtime = stat.birthtime, path = entryPath}
                 handleCallback(directory, callback, 'update', entryPath)
             end
             return
         end
         local stat = fs_stat(entryPath)
         if stat then
-            info[entryPath] = {size = stat.size, mtime = stat.mtime}
+            createCalled = true
+            info[entryPath] = {size = stat.size, mtime = stat.mtime, birthtime = stat.birthtime, path = entryPath}
+            if lastDeleted and lastDeleted.birthtime.nsec == stat.birthtime.nsec and lastDeleted.birthtime.sec == stat.birthtime.sec then
+                handleCallback(directory, callback, 'rename', lastDeleted.path, entryPath)
+                lastDeleted = nil
+                return
+            end
             handleCallback(directory, callback, 'create', entryPath)
         else
+            lastDeleted = info[entryPath]
             info[entryPath] = nil
-            handleCallback(directory, callback, 'delete', entryPath)
+            setImmediate(function()
+                if not createCalled then
+                    handleCallback(directory, callback, 'delete', entryPath)
+                end
+                createCalled = nil
+            end)
         end
     end)
     if not success then
@@ -132,5 +162,6 @@ end
 
 return {
     watch = watch,
-    stop = stop
+    stop = stop,
+    stopAll = stopAll
 }

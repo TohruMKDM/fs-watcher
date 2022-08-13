@@ -17,13 +17,15 @@ local fs_watcher = require('fs-watcher')
 fs_watcher.watch(
     './', -- Current directory
     false, -- Do not recursively monitor directories
-    function(event, filepath) -- Assign callback function
+    function(event, filepath, newpath) -- Assign callback function
         if event == 'update' then
-            print(filepath..' was updated!')
+            print(filepath..' was updated')
         elseif event == 'create' then
-            print(filepath..' was created!')
+            print(filepath..' was created')
         elseif event == 'delete' then
-            print(filepath..' was deleted!')
+            print(filepath..' was deleted')
+        elseif event == 'rename' then
+            print(filepath..' was renamed to '..newpath)
         end
         if event == 'error' then
             -- An error occured, 
@@ -49,13 +51,15 @@ Creates a new watcher to monitor the given directory for changes</br>
 The callback's parameters are defined below</br></br>
 **Returns:** [uv_fs_event_t](https://github.com/luvit/luv/blob/master/docs.md#uv_fs_event_t--fs-event-handle)
 
-### callback(event, filepath)
-| Parameter |   Type   |
-| --------- | -------- |
-|   event   |  string  |   
-|  filepath |  string  |
+### callback(event, filepath, newpath)
+| Parameter |   Type    |
+| --------- | --------  |
+|   event   |  string   |   
+|  filepath |  string   |
+|  newpath  |  string?  |
 
 `filepath` will be the filepath of the relevant file **relative** to the directory the watcher is monitoring</br>
+`newpath` will the new filepath in the event of a `rename` and `filepath` would be the old name</br>
 If the callback returns a truthy value then it will automatically cancel the watcher for the directory the callback is assigned to.</br>
 List of all possible events are defined below
 
@@ -68,6 +72,9 @@ Fired when a file is modified
 ### delete
 Fired when a file is deleted
 
+### rename
+Fired when a file is renamed
+
 ### error
 Fired when an error occurs
 
@@ -77,6 +84,12 @@ Fired when an error occurs
 | directory |  string  |
 
 Stops monitoring the given directory</br></br>
+
+**Returns:** boolean, string?
+
+## fs_watcher.stopAll()
+
+Stops all active watchers</br></br>
 
 **Returns:** boolean, string?
 
