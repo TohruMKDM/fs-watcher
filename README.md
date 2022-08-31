@@ -36,7 +36,22 @@ fs_watcher.watch(
         end
     end
 )
+
+-- Wait for example
+-- Waits for a file to be created with the name 'file.txt' in the current directory for 1 second
+local success, _, filepath = fs_watcher.waitForChange('./', false, 1000, function(event, filepath)
+    if event == 'create' and filepath = 'file.txt' then
+        return true
+    end
+    return false
+end)
+if success then
+    print('file.txt was created within a second!')
+else
+    print('file.txt was not created within a second.')
+end
 ```
+
 
 # Functions
 A detailed explanation on what each function this module provides does.
@@ -47,9 +62,9 @@ A detailed explanation on what each function this module provides does.
 | recursive | boolean  |     ✔    |
 | callback  | function |          |
 
-Creates a new watcher to monitor the given directory for changes</br>
+Creates a new watcher to monitor the given directory for changes and returns the assigned callback for convenience</br>
 The callback's parameters are defined below</br></br>
-**Returns:** [uv_fs_event_t](https://github.com/luvit/luv/blob/master/docs.md#uv_fs_event_t--fs-event-handle)
+**Returns:** function, [uv_fs_event_t](https://github.com/luvit/luv/blob/master/docs.md#uv_fs_event_t--fs-event-handle)
 
 ### callback(event, filepath, newpath)
 | Parameter |   Type    |
@@ -78,20 +93,36 @@ Fired when a file is renamed
 ### error
 Fired when an error occurs
 
-## fs_watcher.stop(directory)
+## fs_watcher.stop(callback)
 | Parameter |   Type   |
 | --------- | -------- |
-| directory |  string  |
+| callback  |  function  |
 
-Stops monitoring the given directory</br></br>
+Stops triggering a callback</br></br>
+
+**Returns:** boolean, string?
+
+## fs_watcher.stopAll(directory)
+| Parameter |   Type   | Optional |
+| --------- | -------- |:--------:|
+| directory | string   |     ✔    |
+
+Stops all active watchers for a given directory</br></br>
 
 **Returns:** boolean, string?
 
-## fs_watcher.stopAll()
+## fs_watcher.waitForChange(directory, recursive, timeout, predicate)
+| Parameter |   Type   | Optional |
+| --------- | -------- |:--------:|
+| directory | string   |          |
+| recursive | boolean  |     ✔    |
+|  timeout  |  number  |      ✔    |
+| predicate | function |      ✔    |
 
-Stops all active watchers</br></br>
+Waits for a singular change in a given directory with a optional timeout and predicate</br>
+The predicate is called with the same arguments as the [`callback`](https://github.com/TohruMKDM/fs-watcher#callbackevent-filepath-newpath) from `fs_watcher.watch`</br></br>
 
-**Returns:** boolean, string?
+**Returns:** boolean, string?, string?, string?
 
 # Note
 Every active watcher is a handle that will keep your event loop alive and as such your program will not exit until all of them are stopped or closed.

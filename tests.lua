@@ -6,11 +6,12 @@ local createCalled = false
 local updateCalled = false
 local deleteCalled = false
 local renameCalled = false
+local waitFor
 
 fs.mkdirSync('testing')
 timer.sleep(500)
 
-watcher.watch('testing', false, function(event, path, newpath)
+local fn = watcher.watch('testing', false, function(event, path, newpath)
     if event == 'create' then
         assert(path == 'testing/file.lua', 'create event called with unexpected path')
         print('create event passed')
@@ -46,25 +47,36 @@ timer.sleep(500)
 fs.unlinkSync('testing/file.txt')
 timer.sleep(500)
 
-watcher.stop('testing')
+watcher.stop(fn)
+timer.sleep(500)
+
+coroutine.wrap(function()
+    local _, event, filepath = watcher.waitForChange('testing', false, nil, function(event, filepath)
+        return event == 'create' and filepath == 'testing/file2.txt'
+    end)
+    if event =='create' then
+        waitFor = filepath
+        if filepath == 'testing/file2.txt' then
+            print('waitFor test passed')
+        end
+    end
+end)()
+
+fs.writeFileSync('testing/file1.txt', '...')
+timer.sleep(500)
+
+fs.writeFileSync('testing/file2.txt', '...')
 timer.sleep(500)
 
 assert(createCalled, 'create event not called')
 assert(updateCalled, 'update event not called')
 assert(deleteCalled, 'delete event not called')
 assert(renameCalled, 'rename event not called')
+assert(waitFor == 'testing/file2.txt', 'waitFor did not return the correct file')
+assert(next(watcher.watchers) == nil, 'watchers not stopped')
 
-watcher.watch('testing', false, function()
-    return true
-end)
-
-fs.writeFileSync('testing/x.txt', '...')
-timer.sleep(500)
-
-assert(not watcher.stop('testing'), 'fs_watcher auto cancellation not passed')
-print('fs_watcher auto cancellation passed')
-
-fs.unlinkSync('testing/x.txt')
+fs.unlinkSync('testing/file1.txt')
+fs.unlinkSync('testing/file2.txt')
 timer.sleep(500)
 
 fs.rmdirSync('testing')
