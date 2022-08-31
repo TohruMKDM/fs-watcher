@@ -114,8 +114,8 @@ Stops all active watchers for a given directory</br></br>
 ## fs_watcher.waitForChange(directory, recursive, timeout, predicate)
 | Parameter |   Type   | Optional |
 | --------- | -------- |:--------:|
-| directory | string   |          |
-| recursive | boolean  |     ✔    |
+| directory | string   |           |
+| recursive | boolean  |           |
 |  timeout  |  number  |      ✔    |
 | predicate | function |      ✔    |
 
